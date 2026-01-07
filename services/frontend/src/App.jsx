@@ -1562,4 +1562,5 @@ const PricingPage = ({ user, categories, categoriesLoading, setCurrentPage, toke
                       )}
                     </div>
                   ))}
+
                 </div>
