@@ -2,49 +2,41 @@ version: "3.9"
 
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.4
     container_name: mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: scrapzee
     ports:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpassword"]
       interval: 5s
-      timeout: 3s
-      retries: 10
+      timeout: 5s
+      retries: 15
 
   auth-service:
     build: ./auth-service
     image: scrapzee/auth-service:latest
-    container_name: auth-service
-    restart: always
     depends_on:
       mysql:
         condition: service_healthy
     environment:
-      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
-      SECRET_KEY: supersecretkey
+      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee_auth
     ports:
       - "5001:5000"
 
   pricing-service:
     build: ./pricing-service
     image: scrapzee/pricing-service:latest
-    container_name: pricing-service
-    restart: always
     depends_on:
       mysql:
         condition: service_healthy
-      auth-service:
-        condition: service_started
     environment:
-      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
+      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee_pricing
       AUTH_SERVICE_URL: http://auth-service:5000
     ports:
       - "5002:5000"
@@ -52,36 +44,22 @@ services:
   user-service:
     build: ./user-service
     image: scrapzee/user-service:latest
-    container_name: user-service
-    restart: always
     depends_on:
       mysql:
         condition: service_healthy
-      pricing-service:
-        condition: service_started
     environment:
-      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
-      AUTH_SERVICE_URL: http://auth-service:5000
-      PRICING_SERVICE_URL: http://pricing-service:5000
+      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee_users
     ports:
       - "5003:5000"
 
   dealer-service:
     build: ./dealer-service
     image: scrapzee/dealer-service:latest
-    container_name: dealer-service
-    restart: always
     depends_on:
       mysql:
         condition: service_healthy
-      auth-service:
-        condition: service_started
-      user-service:
-        condition: service_started
     environment:
-      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
-      AUTH_SERVICE_URL: http://auth-service:5000
-      USER_SERVICE_URL: http://user-service:5000
+      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee_dealer
     ports:
       - "5004:5000"
 
