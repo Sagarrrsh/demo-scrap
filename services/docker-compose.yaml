@@ -47,7 +47,7 @@ services:
       - "5002:5000"
 
   dealer-service:
-    build: ./backend/dealer
+    build: ./backend/dealer-service
     image: scrapzee/dealer-service:latest
     container_name: dealer-service
     restart: always
@@ -76,3 +76,4 @@ services:
 
 volumes:
   mysql-data:
+
