@@ -19,7 +19,7 @@ services:
       retries: 10
 
   auth-service:
-    build: ./backend/auth
+    build: ./backend/auth-service
     image: scrapzee/auth-service:latest
     container_name: auth-service
     restart: always
@@ -33,7 +33,7 @@ services:
       - "5001:5000"
 
   user-service:
-    build: ./backend/user
+    build: ./backend/user-service
     image: scrapzee/user-service:latest
     container_name: user-service
     restart: always
@@ -62,7 +62,7 @@ services:
       - "5003:5000"
 
   pricing-service:
-    build: ./backend/pricing
+    build: ./backend/pricing-service
     image: scrapzee/pricing-service:latest
     container_name: pricing-service
     restart: always
@@ -76,4 +76,5 @@ services:
 
 volumes:
   mysql-data:
+
 
