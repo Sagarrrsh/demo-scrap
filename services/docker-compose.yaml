@@ -16,6 +16,7 @@ services:
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
+      timeout: 3s
       retries: 10
 
   auth-service:
@@ -28,38 +29,9 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
-      JWT_SECRET: supersecretjwtkey
+      SECRET_KEY: supersecretkey
     ports:
       - "5001:5000"
-
-  user-service:
-    build: ./user-service
-    image: scrapzee/user-service:latest
-    container_name: user-service
-    restart: always
-    depends_on:
-      mysql:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
-      AUTH_SERVICE_URL: http://auth-service:5000
-    ports:
-      - "5002:5000"
-
-  dealer-service:
-    build: ./dealer-service
-    image: scrapzee/dealer-service:latest
-    container_name: dealer-service
-    restart: always
-    depends_on:
-      mysql:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
-      AUTH_SERVICE_URL: http://auth-service:5000
-      USER_SERVICE_URL: http://user-service:5000
-    ports:
-      - "5003:5000"
 
   pricing-service:
     build: ./pricing-service
@@ -69,13 +41,49 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      auth-service:
+        condition: service_started
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
+      AUTH_SERVICE_URL: http://auth-service:5000
+    ports:
+      - "5002:5000"
+
+  user-service:
+    build: ./user-service
+    image: scrapzee/user-service:latest
+    container_name: user-service
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+      pricing-service:
+        condition: service_started
+    environment:
+      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
+      AUTH_SERVICE_URL: http://auth-service:5000
+      PRICING_SERVICE_URL: http://pricing-service:5000
+    ports:
+      - "5003:5000"
+
+  dealer-service:
+    build: ./dealer-service
+    image: scrapzee/dealer-service:latest
+    container_name: dealer-service
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+    environment:
+      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
+      AUTH_SERVICE_URL: http://auth-service:5000
+      USER_SERVICE_URL: http://user-service:5000
     ports:
       - "5004:5000"
 
 volumes:
   mysql-data:
-
-
-
