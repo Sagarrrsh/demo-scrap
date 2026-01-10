@@ -40,8 +40,9 @@ spec:
             port:
               number: 80
 
+      # IMPORTANT: catch-all for React Router
       - path: /
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: frontend
