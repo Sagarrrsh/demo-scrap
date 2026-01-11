@@ -46,4 +46,5 @@ spec:
     app: dealer-service
   ports:
   - port: 80
-    targetPort: 5004
+    targetPort: 5000
+
