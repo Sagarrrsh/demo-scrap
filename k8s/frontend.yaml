@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: sagar1003/scrapzee-frontend:v3
+        image: sagar1003/scrapzee-frontend:v4
         ports:
         - containerPort: 80
 ---
@@ -31,4 +31,5 @@ spec:
   ports:
   - port: 80
     targetPort: 80
+
 
