@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dealer-service
+  namespace: scrapzee
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dealer-service
+  template:
+    metadata:
+      labels:
+        app: dealer-service
+    spec:
+      containers:
+        - name: dealer-service
+          image: sagar1003/scrapzee-dealer-api:v1
+          ports:
+            - containerPort: 5000
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrapzee-db-secrets
+                  key: dealer-db-url
+            - name: AUTH_SERVICE_URL
+              value: "http://auth-service.scrapzee.svc.cluster.local"
+            - name: USER_SERVICE_URL
+              value: "http://user-service.scrapzee.svc.cluster.local"
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dealer-service
+  namespace: scrapzee
+spec:
+  selector:
+    app: dealer-service
+  ports:
+    - port: 80
+      targetPort: 5000
