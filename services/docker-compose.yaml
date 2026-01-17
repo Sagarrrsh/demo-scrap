@@ -13,9 +13,11 @@ services:
       - mysql-data:/var/lib/mysql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpassword"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -prootpassword --silent"]
       interval: 5s
-      retries: 10
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   auth-service:
     build: ./auth-service
