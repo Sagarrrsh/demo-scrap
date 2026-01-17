@@ -16,8 +16,8 @@ services:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -prootpassword --silent"]
       interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 20s
+      retries: 30
+      start_period: 40s
 
   auth-service:
     build: ./auth-service
