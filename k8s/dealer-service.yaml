@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: dealer-service
-          image: sagar1003/scrapzee-dealer-api:v1
+          image: sagar1003/scrapzee-dealer-api:v2
           ports:
             - containerPort: 5000
 
@@ -67,3 +67,4 @@ spec:
   ports:
     - port: 80
       targetPort: 5000
+
