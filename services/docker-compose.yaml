@@ -28,9 +28,25 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
-      JWT_SECRET: supersecretjwtkey
+      SECRET_KEY: supersecretjwtkey
     ports:
       - "5001:5000"
+
+  pricing-service:
+    build: ./pricing-service
+    image: scrapzee/pricing-service:latest
+    container_name: pricing-service
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    environment:
+      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
+      AUTH_SERVICE_URL: http://auth-service:5000
+    ports:
+      - "5002:5000"
 
   user-service:
     build: ./user-service
@@ -40,9 +56,14 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      auth-service:
+        condition: service_started
+      pricing-service:
+        condition: service_started
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
       AUTH_SERVICE_URL: http://auth-service:5000
+      PRICING_SERVICE_URL: http://pricing-service:5000
     ports:
       - "5003:5000"
 
@@ -54,6 +75,10 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
       AUTH_SERVICE_URL: http://auth-service:5000
@@ -61,19 +86,5 @@ services:
     ports:
       - "5000:5000"
 
-  pricing-service:
-    build: ./pricing-service
-    image: scrapzee/pricing-service:latest
-    container_name: pricing-service
-    restart: always
-    depends_on:
-      mysql:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
-    ports:
-      - "5002:5000"
-
 volumes:
   mysql-data:
-
