@@ -44,7 +44,7 @@ services:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
       AUTH_SERVICE_URL: http://auth-service:5000
     ports:
-      - "5002:5000"
+      - "5003:5000"
 
   dealer-service:
     build: ./dealer-service
@@ -59,7 +59,7 @@ services:
       AUTH_SERVICE_URL: http://auth-service:5000
       USER_SERVICE_URL: http://user-service:5000
     ports:
-      - "5003:5000"
+      - "5000:5000"
 
   pricing-service:
     build: ./pricing-service
@@ -72,7 +72,8 @@ services:
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee
     ports:
-      - "5004:5000"
+      - "5002:5000"
 
 volumes:
   mysql-data:
+
