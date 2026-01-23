@@ -26,4 +26,5 @@ COPY . .
 
 EXPOSE 5003
 
-CMD ["gunicorn", "-b", "0.0.0.0:5003", "app:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
+
