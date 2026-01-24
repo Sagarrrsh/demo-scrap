@@ -38,11 +38,14 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      auth-service:
+        condition: service_started
     ports:
       - "5002:5002"
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee_db
       SECRET_KEY: "mysecretkey123"
+      AUTH_SERVICE_URL: http://auth-service:5001
 
   user-service:
     build: ./user-service
@@ -70,6 +73,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      auth-service:
+        condition: service_started
       user-service:
         condition: service_started
     ports:
@@ -77,6 +82,7 @@ services:
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee_db
       SECRET_KEY: "mysecretkey123"
+      AUTH_SERVICE_URL: http://auth-service:5001
       USER_SERVICE_URL: http://user-service:5003
 
 volumes:
