@@ -373,6 +373,50 @@ def get_request(request_id):
     )
 
 
+# ========== NEW: REQUEST HISTORY ENDPOINT ==========
+@app.route("/api/users/requests/<int:request_id>/history", methods=["GET"])
+def get_request_history(request_id):
+    """Get the status change history for a request"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    # Get the request
+    scrap_request = ScrapRequest.query.get(request_id)
+    
+    if not scrap_request:
+        return jsonify({"error": "Request not found"}), 404
+
+    # Users can only see their own request history, dealers/admins can see all
+    if scrap_request.user_id != user["id"] and user.get("role") not in ["dealer", "admin"]:
+        return jsonify({"error": "Forbidden"}), 403
+
+    # Get history ordered by time
+    history = (
+        RequestHistory.query.filter_by(request_id=request_id)
+        .order_by(RequestHistory.changed_at.asc())
+        .all()
+    )
+
+    return jsonify(
+        {
+            "request_id": request_id,
+            "current_status": scrap_request.status,
+            "assigned_dealer_id": scrap_request.assigned_dealer_id,
+            "history": [
+                {
+                    "id": h.id,
+                    "status": h.status,
+                    "changed_by": h.changed_by,
+                    "changed_at": h.changed_at.isoformat(),
+                    "notes": h.notes,
+                }
+                for h in history
+            ],
+        }
+    )
+
+
 @app.route("/api/users/requests/<int:request_id>/status", methods=["PUT"])
 def update_status(request_id):
     user = get_current_user()
@@ -511,6 +555,3 @@ def debug_requests():
 with app.app_context():
     db.create_all()
     print("✓ Database tables created successfully")
-
-
-# if __name__ == "__main__":
