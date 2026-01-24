@@ -17,12 +17,12 @@ spec:
         - name: user-service
           image: sagar1003/scrapzee-user-api:v2
           ports:
-            - containerPort: 5000
+            - containerPort: 5003
 
           readinessProbe:
             httpGet:
               path: /health
-              port: 5000
+              port: 5003
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 2
@@ -31,7 +31,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 5000
+              port: 5003
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 2
@@ -66,4 +66,5 @@ spec:
     app: user-service
   ports:
     - port: 80
-      targetPort: 5000
+      targetPort: 5003
+
