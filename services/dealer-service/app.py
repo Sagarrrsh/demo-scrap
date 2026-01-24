@@ -99,7 +99,7 @@ def get_current_user():
     return verify_token(token)
 
 
-def update_request_status(request_id, status, dealer_id=None):
+def update_request_status(req_id, status, dealer_id=None):
     """Update request status in user service"""
     try:
         token = request.headers.get("Authorization")
@@ -109,7 +109,7 @@ def update_request_status(request_id, status, dealer_id=None):
             payload["assigned_dealer_id"] = dealer_id
             
         res = requests.put(
-            f"{USER_SERVICE_URL}/api/users/requests/{request_id}/status",
+            f"{USER_SERVICE_URL}/api/users/requests/{req_id}/status",
             headers={"Authorization": token, "Content-Type": "application/json"},
             json=payload,
             timeout=5,
@@ -129,11 +129,11 @@ def get_all_pending_requests(token):
         # Use the new /all endpoint to get all pending requests
         res = requests.get(
             f"{USER_SERVICE_URL}/api/users/requests/all?status=pending",
-            headers={"Authorization": auth_header},  # ← FIXED: Use auth_header
+            headers={"Authorization": auth_header},
             timeout=5,
         )
         
-        print(f"DEBUG: Request status code: {res.status_code}")  # Debug log
+        print(f"DEBUG: Request status code: {res.status_code}")
         
         if res.status_code == 200:
             data = res.json()
@@ -211,7 +211,7 @@ def update_dealer_profile():
         return jsonify({"error": str(e)}), 500
 
 
-# FIXED: Available Requests - Show ALL unassigned pending requests
+# Available Requests - Show ALL unassigned pending requests
 @app.route("/api/dealers/available-requests", methods=["GET"])
 def get_available_requests():
     user = get_current_user()
@@ -301,9 +301,9 @@ def get_dealer_requests():
     return jsonify({"requests": requests_data})
 
 
-# Accept a Request
+# FIXED: Accept a Request - Added request_id parameter
 @app.route("/api/dealers/requests/<int:request_id>/accept", methods=["POST"])
-def accept_request():
+def accept_request(request_id):  # ← FIXED: Added request_id parameter
     user = get_current_user()
     if not user or user.get("role") != "dealer":
         return jsonify({"error": "Unauthorized"}), 401
@@ -366,9 +366,9 @@ def accept_request():
         return jsonify({"error": str(e)}), 500
 
 
-# Complete a Request
+# FIXED: Complete a Request - Added request_id parameter
 @app.route("/api/dealers/requests/<int:request_id>/complete", methods=["POST"])
-def complete_request():
+def complete_request(request_id):  # ← FIXED: Added request_id parameter
     user = get_current_user()
     if not user or user.get("role") != "dealer":
         return jsonify({"error": "Unauthorized"}), 401
