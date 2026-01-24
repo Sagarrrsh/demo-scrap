@@ -123,12 +123,17 @@ def update_request_status(request_id, status, dealer_id=None):
 def get_all_pending_requests(token):
     """Fetch ALL pending requests from user service"""
     try:
+        # FIXED: Don't add "Bearer " if it's already there
+        auth_header = token if token and token.startswith("Bearer ") else f"Bearer {token}"
+        
         # Use the new /all endpoint to get all pending requests
         res = requests.get(
             f"{USER_SERVICE_URL}/api/users/requests/all?status=pending",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": auth_header},  # ← FIXED: Use auth_header
             timeout=5,
         )
+        
+        print(f"DEBUG: Request status code: {res.status_code}")  # Debug log
         
         if res.status_code == 200:
             data = res.json()
@@ -136,10 +141,12 @@ def get_all_pending_requests(token):
             print(f"Found {len(pending_requests)} pending requests")
             return pending_requests
         else:
-            print(f"Failed to fetch requests: status {res.status_code}")
+            print(f"Failed to fetch requests: status {res.status_code}, response: {res.text}")
             return []
     except Exception as e:
         print(f"Error fetching pending requests: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
