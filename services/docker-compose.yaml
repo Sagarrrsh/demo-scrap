@@ -31,6 +31,7 @@ services:
       DB_USER: root
       DB_PASSWORD: rootpassword
       DB_NAME: scrapzee_db
+      PORT: 5001
 
   user-service:
     build: ./user-service
@@ -42,9 +43,10 @@ services:
       auth-service:
         condition: service_started
     ports:
-      - "5002:5001"
+      - "5002:5002"
     environment:
       AUTH_SERVICE_URL: http://auth-service:5001
+      PORT: 5002
 
   dealer-service:
     build: ./dealer-service
@@ -56,9 +58,10 @@ services:
       auth-service:
         condition: service_started
     ports:
-      - "5003:5001"
+      - "5003:5003"
     environment:
       AUTH_SERVICE_URL: http://auth-service:5001
+      PORT: 5003
 
   pricing-service:
     build: ./pricing-service
@@ -70,9 +73,10 @@ services:
       auth-service:
         condition: service_started
     ports:
-      - "5004:5001"
+      - "5004:5004"
     environment:
       AUTH_SERVICE_URL: http://auth-service:5001
+      PORT: 5004
 
 volumes:
   mysql_data:
