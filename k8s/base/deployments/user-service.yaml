@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: your-dockerhub/user-service:latest
+          image: sagar1003/scrapzee-user-api:v2
           ports:
             - containerPort: 5003
 
@@ -58,4 +58,5 @@ spec:
               memory: 128Mi
             limits:
               cpu: 200m
+
               memory: 256Mi
