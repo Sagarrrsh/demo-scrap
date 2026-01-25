@@ -5,8 +5,10 @@ metadata:
   namespace: argocd
 spec:
   description: Scrapzee GitOps Project
+
   sourceRepos:
     - "https://github.com/Sagarrrsh/demo-scrap.git"
+
   destinations:
     - namespace: scrapzee
       server: https://kubernetes.default.svc
@@ -16,10 +18,21 @@ spec:
       kind: Namespace
 
   namespaceResourceWhitelist:
+    # Workloads
     - group: apps
       kind: Deployment
+
+    # Core resources
     - group: ""
       kind: Service
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Secret
+    - group: ""
+      kind: PersistentVolumeClaim
+
+    # Networking
     - group: networking.k8s.io
       kind: Ingress
     - group: networking.k8s.io
