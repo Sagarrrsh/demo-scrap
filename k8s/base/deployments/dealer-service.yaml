@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dealer-service
+  namespace: scrapzee
+  labels:
+    app: dealer-service
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dealer-service
+  template:
+    metadata:
+      labels:
+        app: dealer-service
+        tier: backend
+    spec:
+      containers:
+        - name: dealer-service
+          image: your-dockerhub/dealer-service:latest
+          ports:
+            - containerPort: 5002
+
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrapzee-db-secrets
+                  key: dealer-db-url
+            - name: AUTH_SERVICE_URL
+              value: "http://auth-service.scrapzee.svc.cluster.local"
+            - name: USER_SERVICE_URL
+              value: "http://user-service.scrapzee.svc.cluster.local"
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
