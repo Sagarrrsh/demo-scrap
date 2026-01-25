@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: pricing-service
-          image: your-dockerhub/pricing-service:latest
+          image: sagar1003/scrapzee-pricing-api:v1
           ports:
             - containerPort: 5004
 
@@ -57,4 +57,5 @@ spec:
               memory: 128Mi
             limits:
               cpu: 200m
+
               memory: 256Mi
