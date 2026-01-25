@@ -1,7 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: scrapzee
+  namespace: argocd
 spec:
   description: Scrapzee GitOps Project
+
   sourceRepos:
     - "https://github.com/Sagarrrsh/demo-scrap.git"
+
   destinations:
     - namespace: scrapzee
       server: https://kubernetes.default.svc
@@ -13,15 +20,18 @@ spec:
   namespaceResourceWhitelist:
     - group: apps
       kind: Deployment
+
     - group: ""
       kind: Service
     - group: ""
       kind: ConfigMap
     - group: ""
       kind: PersistentVolumeClaim
+
     - group: networking.k8s.io
       kind: Ingress
     - group: networking.k8s.io
       kind: NetworkPolicy
+
     - group: autoscaling
       kind: HorizontalPodAutoscaler
