@@ -3,6 +3,8 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
+  
+  - secrets/scrapzee-secrets.yaml
 
   - deployments/frontend.yaml
   - deployments/auth-service.yaml
@@ -28,3 +30,4 @@ resources:
   - network-policies/6-allow-user.yaml
   - network-policies/7-allow-pricing.yaml
   - network-policies/8-allow-mysql.yaml
+
