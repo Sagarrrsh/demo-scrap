@@ -9,7 +9,7 @@ spec:
   source:
     repoURL: "https://github.com/Sagarrrsh/demo-scrap.git"
     targetRevision: main
-    path: base
+    path: k8s/base
 
   destination:
     server: https://kubernetes.default.svc
@@ -21,3 +21,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+
