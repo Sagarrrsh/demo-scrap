@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: scrapzee-dev
+  namespace: argocd
+spec:
+  project: scrapzee
+
+  source:
+    repoURL: "https://github.com/Sagarrrsh/demo-scrap.git"
+    targetRevision: main
+    path: base
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: scrapzee
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
