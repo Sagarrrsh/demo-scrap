@@ -23,7 +23,7 @@ spec:
     - group: ""
       kind: Service
     - group: ""
-      kind: 
+      kind: Secret
     - group: ""
       kind: PersistentVolumeClaim
     - group: networking.k8s.io
@@ -32,4 +32,5 @@ spec:
       kind: NetworkPolicy
     - group: autoscaling
       kind: HorizontalPodAutoscaler
+
 
