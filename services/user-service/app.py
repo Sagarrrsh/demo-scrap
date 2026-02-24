@@ -4,6 +4,8 @@ from flask_cors import CORS
 import os
 import datetime
 import requests
+import json
+import pika
 
 app = Flask(__name__)
 CORS(app)
@@ -14,6 +16,8 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL")
 PRICING_SERVICE_URL = os.getenv("PRICING_SERVICE_URL")
+RABBITMQ_URL = os.getenv("RABBITMQ_URL")
+RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "scrapzee.events")
 
 if not app.config["SQLALCHEMY_DATABASE_URI"]:
     raise RuntimeError("DATABASE_URL environment variable is required")
@@ -114,6 +118,33 @@ def calculate_price(category_id, quantity, location):
         print(f"Price calculation error: {e}")
 
     return None
+
+
+def publish_event(routing_key, payload):
+    """Publish async domain events for downstream services (notifications, analytics, etc.)."""
+    if not RABBITMQ_URL:
+        return
+
+    connection = None
+    channel = None
+    try:
+        params = pika.URLParameters(RABBITMQ_URL)
+        connection = pika.BlockingConnection(params)
+        channel = connection.channel()
+        channel.exchange_declare(exchange=RABBITMQ_EXCHANGE, exchange_type="topic", durable=True)
+        channel.basic_publish(
+            exchange=RABBITMQ_EXCHANGE,
+            routing_key=routing_key,
+            body=json.dumps(payload),
+            properties=pika.BasicProperties(content_type="application/json", delivery_mode=2),
+        )
+    except Exception as exc:
+        print(f"[publish_event] Unable to publish {routing_key}: {exc}")
+    finally:
+        if channel and channel.is_open:
+            channel.close()
+        if connection and connection.is_open:
+            connection.close()
 
 
 # ---- ROUTES
@@ -283,6 +314,19 @@ def create_request():
         db.session.commit()
 
         print(f"[create_request] Created request #{scrap_request.id} for user {user['id']}")
+
+        publish_event(
+            "request.created",
+            {
+                "request_id": scrap_request.id,
+                "user_id": user["id"],
+                "category_id": scrap_request.category_id,
+                "quantity": scrap_request.quantity,
+                "status": scrap_request.status,
+                "estimated_price": scrap_request.estimated_price,
+                "created_at": scrap_request.created_at.isoformat(),
+            },
+        )
 
         return (
             jsonify(
@@ -459,6 +503,19 @@ def update_status(request_id):
         db.session.commit()
 
         print(f"[update_status] Request #{request_id} status: {old_status} -> {new_status}")
+
+        publish_event(
+            "request.status.updated",
+            {
+                "request_id": request_id,
+                "user_id": scrap_request.user_id,
+                "old_status": old_status,
+                "new_status": new_status,
+                "changed_by": user["id"],
+                "assigned_dealer_id": scrap_request.assigned_dealer_id,
+                "updated_at": scrap_request.updated_at.isoformat(),
+            },
+        )
 
         return jsonify({"message": "Status updated successfully"})
     except Exception as e:

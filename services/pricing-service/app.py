@@ -4,6 +4,8 @@ from flask_cors import CORS
 import os
 import datetime
 import requests
+import json
+import redis
 
 app = Flask(__name__)
 CORS(app)
@@ -15,6 +17,8 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 AUTH_SERVICE_URL = os.getenv(
     "AUTH_SERVICE_URL"
 )
+REDIS_URL = os.getenv("REDIS_URL")
+REDIS_TTL_SECONDS = int(os.getenv("REDIS_TTL_SECONDS", "120"))
 
 if not app.config["SQLALCHEMY_DATABASE_URI"]:
     raise RuntimeError("DATABASE_URL environment variable is required")
@@ -23,6 +27,7 @@ if not AUTH_SERVICE_URL:
     raise RuntimeError("AUTH_SERVICE_URL environment variable is required")
 
 db = SQLAlchemy(app)
+redis_client = redis.from_url(REDIS_URL, decode_responses=True) if REDIS_URL else None
 
 
 # ---- MODELS 
@@ -89,6 +94,41 @@ def require_auth():
     return verify_token(token)
 
 
+def redis_get_json(key):
+    if not redis_client:
+        return None
+    try:
+        data = redis_client.get(key)
+        return json.loads(data) if data else None
+    except Exception as exc:
+        print(f"[redis_get_json] {exc}")
+        return None
+
+
+def redis_set_json(key, payload, ttl=REDIS_TTL_SECONDS):
+    if not redis_client:
+        return
+    try:
+        redis_client.setex(key, ttl, json.dumps(payload))
+    except Exception as exc:
+        print(f"[redis_set_json] {exc}")
+
+
+def clear_pricing_cache(category_id=None):
+    if not redis_client:
+        return
+    patterns = ["pricing:categories:all", "pricing:calculate:*"]
+    if category_id:
+        patterns.append(f"pricing:category:{category_id}")
+    try:
+        for pattern in patterns:
+            keys = redis_client.keys(pattern)
+            if keys:
+                redis_client.delete(*keys)
+    except Exception as exc:
+        print(f"[clear_pricing_cache] {exc}")
+
+
 # ---- ROUTES 
 @app.route("/health", methods=["GET"])
 def health():
@@ -97,28 +137,12 @@ def health():
 
 @app.route("/api/pricing/categories", methods=["GET"])
 def get_categories():
+    cached = redis_get_json("pricing:categories:all")
+    if cached:
+        return jsonify({"categories": cached, "cache": "hit"})
+
     categories = ScrapCategory.query.filter_by(is_active=True).all()
-    return jsonify(
-        {
-            "categories": [
-                {
-                    "id": c.id,
-                    "name": c.name,
-                    "base_price": c.base_price,
-                    "unit": c.unit,
-                    "description": c.description,
-                    "image_url": c.image_url,
-                }
-                for c in categories
-            ]
-        }
-    )
-
-
-@app.route("/api/pricing/categories/<int:category_id>", methods=["GET"])
-def get_category(category_id):
-    c = ScrapCategory.query.get_or_404(category_id)
-    return jsonify(
+    payload = [
         {
             "id": c.id,
             "name": c.name,
@@ -127,7 +151,30 @@ def get_category(category_id):
             "description": c.description,
             "image_url": c.image_url,
         }
-    )
+        for c in categories
+    ]
+    redis_set_json("pricing:categories:all", payload)
+    return jsonify({"categories": payload, "cache": "miss"})
+
+
+@app.route("/api/pricing/categories/<int:category_id>", methods=["GET"])
+def get_category(category_id):
+    cache_key = f"pricing:category:{category_id}"
+    cached = redis_get_json(cache_key)
+    if cached:
+        return jsonify({**cached, "cache": "hit"})
+
+    c = ScrapCategory.query.get_or_404(category_id)
+    payload = {
+        "id": c.id,
+        "name": c.name,
+        "base_price": c.base_price,
+        "unit": c.unit,
+        "description": c.description,
+        "image_url": c.image_url,
+    }
+    redis_set_json(cache_key, payload)
+    return jsonify({**payload, "cache": "miss"})
 
 
 @app.route("/api/pricing/calculate", methods=["POST"])
@@ -140,6 +187,11 @@ def calculate_price():
 
     if not category_id or quantity <= 0:
         return jsonify({"error": "Invalid category or quantity"}), 400
+
+    cache_key = f"pricing:calculate:{category_id}:{quantity}:{location}"
+    cached = redis_get_json(cache_key)
+    if cached:
+        return jsonify({**cached, "cache": "hit"})
 
     category = ScrapCategory.query.get(category_id)
     if not category:
@@ -156,17 +208,17 @@ def calculate_price():
 
     total = category.base_price * quantity * multiplier
 
-    return jsonify(
-        {
-            "category": category.name,
-            "quantity": quantity,
-            "unit": category.unit,
-            "base_price": category.base_price,
-            "multiplier": multiplier,
-            "total_price": round(total, 2),
-            "location": location,
-        }
-    )
+    payload = {
+        "category": category.name,
+        "quantity": quantity,
+        "unit": category.unit,
+        "base_price": category.base_price,
+        "multiplier": multiplier,
+        "total_price": round(total, 2),
+        "location": location,
+    }
+    redis_set_json(cache_key, payload)
+    return jsonify({**payload, "cache": "miss"})
 
 
 @app.route("/api/pricing/categories", methods=["POST"])
@@ -199,6 +251,7 @@ def create_category():
         db.session.add(history)
         db.session.commit()
 
+        clear_pricing_cache(category.id)
         return jsonify({"message": "Category created", "category_id": category.id}), 201
     except Exception as e:
         db.session.rollback()
@@ -232,6 +285,7 @@ def update_price(category_id):
         db.session.add(history)
         db.session.commit()
 
+        clear_pricing_cache(category_id)
         return jsonify(
             {
                 "message": "Price updated",
