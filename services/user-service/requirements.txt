@@ -12,3 +12,4 @@ urllib3==2.6.3
 # force-fix transitive vulns
 jaraco.context==6.1.0
 wheel==0.46.2
+pika==1.3.2

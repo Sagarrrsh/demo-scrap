@@ -52,6 +52,10 @@ spec:
                   key: users-db-url
             - name: AUTH_SERVICE_URL
               value: "http://auth-service.scrapzee.svc.cluster.local"
+            - name: RABBITMQ_URL
+              value: "amqp://scrapzee:scrapzee-pass@rabbitmq.scrapzee.svc.cluster.local:5672/"
+            - name: RABBITMQ_EXCHANGE
+              value: "scrapzee.events"
             - name: PRICING_SERVICE_URL
               value: "http://pricing-service.scrapzee.svc.cluster.local"
 

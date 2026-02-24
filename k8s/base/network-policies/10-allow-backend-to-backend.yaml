@@ -25,6 +25,10 @@ spec:
           port: 5003
         - protocol: TCP
           port: 5004
+        - protocol: TCP
+          port: 5672
+        - protocol: TCP
+          port: 6379
 
   egress:
     - to:
@@ -40,3 +44,7 @@ spec:
           port: 5003
         - protocol: TCP
           port: 5004
+        - protocol: TCP
+          port: 5672
+        - protocol: TCP
+          port: 6379
