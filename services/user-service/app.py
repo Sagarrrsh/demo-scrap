@@ -1178,7 +1178,6 @@ def debug_requests():
 with app.app_context():
     db.create_all()
     print("✓ Database tables created successfully")
-=======
 
         return jsonify({"message": "Status updated successfully"})
     except Exception as e:
