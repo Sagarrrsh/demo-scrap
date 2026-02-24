@@ -14,13 +14,3 @@ Enhanced microservice demo for scrap management.
   - `user-service`: `RABBITMQ_URL`, `RABBITMQ_EXCHANGE`
   - `pricing-service`: `REDIS_URL`, `REDIS_TTL_SECONDS`
 
-- Database strategy options: `docs/database-options.md`
-
-
-## Local test with Docker Compose
-- Run from `services/`:
-  - `docker compose up --build`
-- Included infra for local validation:
-  - MySQL (`3306`), Redis (`6379`), RabbitMQ AMQP (`5672`), RabbitMQ UI (`15672`)
-- Services:
-  - `auth-service` (`5001`), `pricing-service` (`5002`), `user-service` (`5003`), `dealer-service` (`5000`)
