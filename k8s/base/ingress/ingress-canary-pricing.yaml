@@ -1,0 +1,23 @@
+# Pricing Service Canary Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: scrapzee-ingress-pricing-canary
+  namespace: scrapzee
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "0"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: scrapzee.local
+    http:
+      paths:
+      - path: /api/pricing
+        pathType: Prefix
+        backend:
+          service:
+            name: pricing-service-canary
+            port:
+
+              number: 80

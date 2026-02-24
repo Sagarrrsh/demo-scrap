@@ -1,0 +1,56 @@
+---
+# Stable service - receives production traffic
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service-stable
+  namespace: scrapzee
+  labels:
+    app: user-service
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+    - port: 80
+      targetPort: 5003
+      protocol: TCP
+      name: http
+
+---
+# Canary service - receives canary traffic during rollout
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service-canary
+  namespace: scrapzee
+  labels:
+    app: user-service
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+    - port: 80
+      targetPort: 5003
+      protocol: TCP
+      name: http
+
+---
+# Main service - backward compatibility
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: scrapzee
+  labels:
+    app: user-service
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+    - port: 80
+      targetPort: 5003
+      protocol: TCP
+      name: http

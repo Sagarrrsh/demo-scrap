@@ -1,0 +1,53 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dealer-service-stable
+  namespace: scrapzee
+  labels:
+    app: dealer-service
+spec:
+  type: ClusterIP
+  selector:
+    app: dealer-service
+  ports:
+    - port: 80
+      targetPort: 5000
+      protocol: TCP
+      name: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dealer-service-canary
+  namespace: scrapzee
+  labels:
+    app: dealer-service
+spec:
+  type: ClusterIP
+  selector:
+    app: dealer-service
+  ports:
+    - port: 80
+      targetPort: 5000
+      protocol: TCP
+      name: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dealer-service
+  namespace: scrapzee
+  labels:
+    app: dealer-service
+spec:
+  type: ClusterIP
+  selector:
+    app: dealer-service
+  ports:
+    - port: 80
+      targetPort: 5000
+      protocol: TCP
+      name: http

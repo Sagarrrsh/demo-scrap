@@ -1,0 +1,84 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: user-service
+  namespace: scrapzee
+  labels:
+    app: user-service
+    tier: backend
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: user-service
+  
+  template:
+    metadata:
+      labels:
+        app: user-service
+        tier: backend
+    spec:
+      containers:
+        - name: user-service
+          image: sagar1003/scrapzee-user-api:v2
+          ports:
+            - containerPort: 5003
+              protocol: TCP
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5003
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5003
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrapzee-db-secrets
+                  key: users-db-url
+            - name: AUTH_SERVICE_URL
+              value: "http://auth-service.scrapzee.svc.cluster.local"
+            - name: PRICING_SERVICE_URL
+              value: "http://pricing-service.scrapzee.svc.cluster.local"
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+  strategy:
+    canary:
+      canaryService: user-service-canary
+      stableService: user-service-stable
+      
+      trafficRouting:
+        nginx:
+          stableIngress: scrapzee-ingress
+      
+      steps:
+        - setWeight: 20
+        - pause: {duration: 2m}
+        - setWeight: 40
+        - pause: {duration: 2m}
+        - setWeight: 60
+        - pause: {duration: 2m}
+        - setWeight: 80
+
+        - pause: {duration: 1m}

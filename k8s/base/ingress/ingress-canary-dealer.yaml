@@ -1,0 +1,30 @@
+# Dealer Service Canary Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: scrapzee-ingress-dealer-canary
+  namespace: scrapzee
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "0"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: scrapzee.local
+    http:
+      paths:
+      - path: /api/dealers
+        pathType: Prefix
+        backend:
+          service:
+            name: dealer-service-canary
+            port:
+              number: 80
+      - path: /api/admin
+        pathType: Prefix
+        backend:
+          service:
+            name: dealer-service-canary
+            port:
+
+              number: 80

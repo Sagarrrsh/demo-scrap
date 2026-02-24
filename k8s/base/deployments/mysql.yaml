@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: scrapzee
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init
+  namespace: scrapzee
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS scrapzee_auth;
+    CREATE DATABASE IF NOT EXISTS scrapzee_pricing;
+    CREATE DATABASE IF NOT EXISTS scrapzee_users;
+    CREATE DATABASE IF NOT EXISTS scrapzee_dealers;
+
+    CREATE USER IF NOT EXISTS 'scrapzee'@'%' IDENTIFIED BY 'scrapzee123';
+
+    GRANT ALL PRIVILEGES ON scrapzee_auth.* TO 'scrapzee'@'%';
+    GRANT ALL PRIVILEGES ON scrapzee_pricing.* TO 'scrapzee'@'%';
+    GRANT ALL PRIVILEGES ON scrapzee_users.* TO 'scrapzee'@'%';
+    GRANT ALL PRIVILEGES ON scrapzee_dealers.* TO 'scrapzee'@'%';
+
+    FLUSH PRIVILEGES;
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: scrapzee
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "password"
+
+        ports:
+        - containerPort: 3306
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 512Mi
+
+        readinessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 6
+
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        - name: mysql-init
+          mountPath: /docker-entrypoint-initdb.d
+
+      volumes:
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+      - name: mysql-init
+        configMap:
+          name: mysql-init
+
+
+
+

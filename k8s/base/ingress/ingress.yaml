@@ -1,0 +1,72 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: scrapzee-ingress
+  namespace: scrapzee
+  annotations:
+    # --- Rate Limiting ---
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "3"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+
+    # --- Body Size Protection ---
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+
+    # --- Basic Hardening ---
+    nginx.ingress.kubernetes.io/server-tokens: "false"
+
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: scrapzee.local
+    http:
+      paths:
+      - path: /api/auth
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service-stable
+            port:
+              number: 80
+
+      - path: /api/pricing
+        pathType: Prefix
+        backend:
+          service:
+            name: pricing-service-stable
+            port:
+              number: 80
+
+      - path: /api/users
+        pathType: Prefix
+        backend:
+          service:
+            name: user-service-stable
+            port:
+              number: 80
+
+      - path: /api/dealers
+        pathType: Prefix
+        backend:
+          service:
+            name: dealer-service-stable
+            port:
+              number: 80
+
+      - path: /api/admin
+        pathType: Prefix
+        backend:
+          service:
+            name: dealer-service-stable
+            port:
+              number: 80
+
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-stable
+            port:
+              number: 80
+
+

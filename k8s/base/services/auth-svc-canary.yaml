@@ -1,0 +1,56 @@
+---
+# Stable service - receives production traffic
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service-stable
+  namespace: scrapzee
+  labels:
+    app: auth-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 5001
+      protocol: TCP
+      name: http
+  selector:
+    app: auth-service
+
+---
+# Canary service - receives canary traffic during rollout
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service-canary
+  namespace: scrapzee
+  labels:
+    app: auth-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 5001
+      protocol: TCP
+      name: http
+  selector:
+    app: auth-service
+
+---
+# Main service - for backward compatibility
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: scrapzee
+  labels:
+    app: auth-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 5001
+      protocol: TCP
+      name: http
+  selector:
+    app: auth-service

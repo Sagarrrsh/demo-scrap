@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: scrapzee-dev
+  namespace: argocd
+spec:
+  project: scrapzee
+
+  source:
+    repoURL: "https://github.com/Sagarrrsh/scrapzee-app.git"
+    targetRevision: main
+    path: base
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: scrapzee
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+
+
+
+

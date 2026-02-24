@@ -1,0 +1,83 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: pricing-service
+  namespace: scrapzee
+  labels:
+    app: pricing-service
+    tier: backend
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: pricing-service
+
+  template:
+    metadata:
+      labels:
+        app: pricing-service
+        tier: backend
+    spec:
+      containers:
+        - name: pricing-service
+          image: sagar1003/scrapzee-pricing-api:v1
+          ports:
+            - containerPort: 5002
+              protocol: TCP
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrapzee-db-secrets
+                  key: pricing-db-url
+            - name: AUTH_SERVICE_URL
+              value: "http://auth-service.scrapzee.svc.cluster.local"
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+  strategy:
+    canary:
+      canaryService: pricing-service-canary
+      stableService: pricing-service-stable
+
+      trafficRouting:
+        nginx:
+          stableIngress: scrapzee-ingress
+
+      steps:
+        - setWeight: 20
+        - pause: {duration: 2m}
+        - setWeight: 40
+        - pause: {duration: 2m}
+        - setWeight: 60
+        - pause: {duration: 2m}
+        - setWeight: 80
+        - pause: {duration: 1m}
+
+
