@@ -4,6 +4,7 @@ from flask_cors import CORS
 import os
 import datetime
 import requests
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -11,9 +12,17 @@ CORS(app)
 # ---- CONFIG
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 180,
+    "pool_size": int(os.getenv("DB_POOL_SIZE", "10")),
+    "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "20")),
+}
 
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL")
 PRICING_SERVICE_URL = os.getenv("PRICING_SERVICE_URL")
+RABBITMQ_URL = os.getenv("RABBITMQ_URL")
+RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "scrapzee.events")
 
 if not app.config["SQLALCHEMY_DATABASE_URI"]:
     raise RuntimeError("DATABASE_URL environment variable is required")
@@ -71,6 +80,21 @@ class RequestHistory(db.Model):
     changed_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, index=True)
 
 
+class OutboxEvent(db.Model):
+    __tablename__ = "outbox_events"
+
+    id = db.Column(db.Integer, primary_key=True)
+    aggregate_type = db.Column(db.String(50), nullable=False)
+    aggregate_id = db.Column(db.Integer, nullable=False, index=True)
+    routing_key = db.Column(db.String(100), nullable=False, index=True)
+    payload = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="pending", index=True)
+    retry_count = db.Column(db.Integer, default=0)
+    last_error = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, index=True)
+    published_at = db.Column(db.DateTime)
+
+
 # --- HELPERS
 def verify_token(token):
     try:
@@ -116,6 +140,83 @@ def calculate_price(category_id, quantity, location):
     return None
 
 
+def publish_event(routing_key, payload):
+    """Publish async domain events for downstream services (notifications, analytics, etc.)."""
+    if not RABBITMQ_URL:
+        return False
+
+    try:
+        import pika
+    except ModuleNotFoundError as exc:
+        print(f"[publish_event] pika dependency missing: {exc}")
+        return False
+
+    connection = None
+    channel = None
+    try:
+        params = pika.URLParameters(RABBITMQ_URL)
+        connection = pika.BlockingConnection(params)
+        channel = connection.channel()
+        channel.exchange_declare(exchange=RABBITMQ_EXCHANGE, exchange_type="topic", durable=True)
+        channel.basic_publish(
+            exchange=RABBITMQ_EXCHANGE,
+            routing_key=routing_key,
+            body=json.dumps(payload),
+            properties=pika.BasicProperties(content_type="application/json", delivery_mode=2),
+        )
+    except Exception as exc:
+        print(f"[publish_event] Unable to publish {routing_key}: {exc}")
+        return False
+    finally:
+        if channel and channel.is_open:
+            channel.close()
+        if connection and connection.is_open:
+            connection.close()
+
+    return True
+
+
+
+def enqueue_outbox_event(aggregate_type, aggregate_id, routing_key, payload):
+    db.session.add(
+        OutboxEvent(
+            aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id,
+            routing_key=routing_key,
+            payload=json.dumps(payload),
+        )
+    )
+
+
+def flush_outbox_events(limit=20):
+    pending_events = (
+        OutboxEvent.query.filter_by(status="pending")
+        .order_by(OutboxEvent.created_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+    processed = 0
+    for event in pending_events:
+        try:
+            published = publish_event(event.routing_key, json.loads(event.payload))
+            if not published:
+                raise RuntimeError("broker unavailable")
+            event.status = "published"
+            event.published_at = datetime.datetime.utcnow()
+            event.last_error = None
+            processed += 1
+        except Exception as exc:
+            event.retry_count += 1
+            event.last_error = str(exc)
+            print(f"[flush_outbox_events] Event {event.id} failed: {exc}")
+
+    if pending_events:
+        db.session.commit()
+
+    return processed
+
+
 # ---- ROUTES
 @app.route("/health", methods=["GET"])
 def health():
@@ -123,6 +224,17 @@ def health():
 
 
 # ========== NEW ENDPOINT FOR DEALERS ==========
+
+
+@app.route("/api/users/outbox/flush", methods=["POST"])
+def flush_outbox():
+    user = get_current_user()
+    if not user or user.get("role") != "admin":
+        return jsonify({"error": "Unauthorized"}), 401
+
+    flushed = flush_outbox_events(limit=request.args.get("limit", default=50, type=int))
+    return jsonify({"message": "Outbox flush completed", "processed": flushed})
+
 @app.route("/api/users/requests/all", methods=["GET"])
 def get_all_requests():
     """
@@ -271,7 +383,7 @@ def create_request():
 
     try:
         db.session.add(scrap_request)
-        db.session.commit()
+        db.session.flush()
 
         history = RequestHistory(
             request_id=scrap_request.id,
@@ -280,9 +392,25 @@ def create_request():
             notes="Request created",
         )
         db.session.add(history)
+
+        enqueue_outbox_event(
+            aggregate_type="scrap_request",
+            aggregate_id=scrap_request.id,
+            routing_key="request.created",
+            payload={
+                "request_id": scrap_request.id,
+                "user_id": user["id"],
+                "category_id": scrap_request.category_id,
+                "quantity": scrap_request.quantity,
+                "status": scrap_request.status,
+                "estimated_price": scrap_request.estimated_price,
+                "created_at": scrap_request.created_at.isoformat(),
+            },
+        )
         db.session.commit()
 
         print(f"[create_request] Created request #{scrap_request.id} for user {user['id']}")
+        flush_outbox_events(limit=10)
 
         return (
             jsonify(
@@ -456,9 +584,25 @@ def update_status(request_id):
             ),
         )
         db.session.add(history)
+
+        enqueue_outbox_event(
+            aggregate_type="scrap_request",
+            aggregate_id=request_id,
+            routing_key="request.status.updated",
+            payload={
+                "request_id": request_id,
+                "user_id": scrap_request.user_id,
+                "old_status": old_status,
+                "new_status": new_status,
+                "changed_by": user["id"],
+                "assigned_dealer_id": scrap_request.assigned_dealer_id,
+                "updated_at": scrap_request.updated_at.isoformat(),
+            },
+        )
         db.session.commit()
 
         print(f"[update_status] Request #{request_id} status: {old_status} -> {new_status}")
+        flush_outbox_events(limit=10)
 
         return jsonify({"message": "Status updated successfully"})
     except Exception as e:

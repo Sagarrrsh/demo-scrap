@@ -18,6 +18,40 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: redis
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: scrapzee
+      RABBITMQ_DEFAULT_PASS: scrapzee-pass
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 20s
+      retries: 20
+      start_period: 60s
+
   auth-service:
     build: ./auth-service
     container_name: auth-service
@@ -40,12 +74,17 @@ services:
         condition: service_healthy
       auth-service:
         condition: service_started
+      redis:
+        condition: service_healthy
     ports:
       - "5002:5002"
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee_db
-      SECRET_KEY: "mysecretkey123"
       AUTH_SERVICE_URL: http://auth-service:5001
+      REDIS_URL: redis://redis:6379/0
+      REDIS_TTL_SECONDS: "180"
+      DB_POOL_SIZE: "10"
+      DB_MAX_OVERFLOW: "20"
 
   user-service:
     build: ./user-service
@@ -58,13 +97,18 @@ services:
         condition: service_started
       pricing-service:
         condition: service_started
+      rabbitmq:
+        condition: service_started
     ports:
       - "5003:5003"
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee_db
-      SECRET_KEY: "mysecretkey123"
       AUTH_SERVICE_URL: http://auth-service:5001
       PRICING_SERVICE_URL: http://pricing-service:5002
+      RABBITMQ_URL: amqp://scrapzee:scrapzee-pass@rabbitmq:5672/
+      RABBITMQ_EXCHANGE: scrapzee.events
+      DB_POOL_SIZE: "10"
+      DB_MAX_OVERFLOW: "20"
 
   dealer-service:
     build: ./dealer-service
@@ -81,9 +125,10 @@ services:
       - "5000:5000"
     environment:
       DATABASE_URL: mysql+pymysql://root:rootpassword@mysql:3306/scrapzee_db
-      SECRET_KEY: "mysecretkey123"
       AUTH_SERVICE_URL: http://auth-service:5001
       USER_SERVICE_URL: http://user-service:5003
 
 volumes:
   mysql_data:
+  redis_data:
+  rabbitmq_data:

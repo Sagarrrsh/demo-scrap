@@ -27,12 +27,16 @@ resources:
   - services/user-svc-canary.yaml
   - services/pricing-svc-canary.yaml
   - services/mysql-svc.yaml
+  - services/redis-svc.yaml
+  - services/rabbitmq-svc.yaml
 
   # 5. Main Ingress 
   - ingress/ingress.yaml
   
   # 6. MySQL 
   - deployments/mysql.yaml
+  - deployments/redis.yaml
+  - deployments/rabbitmq.yaml
 
   # 7. Rollouts 
   - deployments/frontend-rollout.yaml
