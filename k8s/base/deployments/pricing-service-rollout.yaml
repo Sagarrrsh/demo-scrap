@@ -52,6 +52,14 @@ spec:
                   key: pricing-db-url
             - name: AUTH_SERVICE_URL
               value: "http://auth-service.scrapzee.svc.cluster.local"
+            - name: REDIS_URL
+              value: "redis://redis.scrapzee.svc.cluster.local:6379/0"
+            - name: REDIS_TTL_SECONDS
+              value: "180"
+            - name: DB_POOL_SIZE
+              value: "10"
+            - name: DB_MAX_OVERFLOW
+              value: "20"
 
           resources:
             requests:
