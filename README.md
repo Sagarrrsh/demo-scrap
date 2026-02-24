@@ -13,3 +13,4 @@ Enhanced microservice demo for scrap management.
 - Runtime config:
   - `user-service`: `RABBITMQ_URL`, `RABBITMQ_EXCHANGE`
   - `pricing-service`: `REDIS_URL`, `REDIS_TTL_SECONDS`
+

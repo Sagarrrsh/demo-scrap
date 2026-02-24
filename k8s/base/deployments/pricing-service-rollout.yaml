@@ -57,6 +57,12 @@ spec:
             - name: REDIS_TTL_SECONDS
               value: "180"
 
+            - name: DB_POOL_SIZE
+              value: "10"
+            - name: DB_MAX_OVERFLOW
+              value: "20"
+
+
           resources:
             requests:
               cpu: 50m

@@ -59,6 +59,12 @@ spec:
             - name: PRICING_SERVICE_URL
               value: "http://pricing-service.scrapzee.svc.cluster.local"
 
+            - name: DB_POOL_SIZE
+              value: "10"
+            - name: DB_MAX_OVERFLOW
+              value: "20"
+
+
           resources:
             requests:
               cpu: 50m
